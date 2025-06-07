@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>打地鼠學注音</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #fefbea;
+    }
+    #game {
+      display: inline-block;
+    }
+    #info {
+      margin-bottom: 10px;
+      font-size: 24px;
+    }
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-gap: 10px;
+      justify-content: center;
+    }
+    .hole {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      border: 2px solid #ccc;
+      border-radius: 10px;
+      background-color: #fff9d9;
+      overflow: hidden;
+      cursor: pointer;
+      font-size: 48px;
+      line-height: 100px;
+    }
+    .symbol {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="game">
+    <div id="info">
+      請找：<span id="target">ㄅ</span> | 分數：<span id="score">0</span> | 倒數：<span id="timer">30</span>
+    </div>
+    <div id="grid">
+      <div class="hole"><span class="symbol"></span></div>
+      <div class="hole"><span class="symbol"></span></div>
+      <div class="hole"><span class="symbol"></span></div>
+      <div class="hole"><span class="symbol"></span></div>
+      <div class="hole"><span class="symbol"></span></div>
+      <div class="hole"><span class="symbol"></span></div>
+    </div>
+  </div>
+  <script>
+    const symbols = ["ㄅ","ㄆ","ㄇ","ㄈ","ㄉ","ㄊ","ㄋ","ㄌ","ㄍ","ㄎ","ㄏ","ㄐ","ㄑ","ㄒ","ㄓ","ㄔ","ㄕ","ㄖ","ㄗ","ㄘ","ㄙ","ㄚ","ㄛ","ㄜ","ㄝ","ㄞ","ㄟ","ㄠ","ㄡ","ㄢ","ㄣ","ㄤ","ㄥ","ㄦ","ㄧ","ㄨ","ㄩ"];
+    let target = "";
+    let score = 0;
+    let timeLeft = 30;
+    let gameTimer;
+    let spawnTimer;
+
+    const targetEl = document.getElementById("target");
+    const scoreEl = document.getElementById("score");
+    const timerEl = document.getElementById("timer");
+    const holes = document.querySelectorAll(".hole");
+
+    function randomSymbol() {
+      return symbols[Math.floor(Math.random() * symbols.length)];
+    }
+
+    function setTarget() {
+      target = randomSymbol();
+      targetEl.textContent = target;
+      if ('speechSynthesis' in window) {
+        const utter = new SpeechSynthesisUtterance('請找 ' + target);
+        utter.lang = 'zh-TW';
+        speechSynthesis.speak(utter);
+      }
+    }
+
+    function clearHoles() {
+      holes.forEach(h => {
+        const sym = h.querySelector('.symbol');
+        sym.textContent = '';
+        sym.style.display = 'none';
+      });
+    }
+
+    function spawn() {
+      clearHoles();
+      const number = Math.ceil(Math.random()*2); // 1-2 symbols
+      const holeIndices = [];
+      while (holeIndices.length < number) {
+        const idx = Math.floor(Math.random()*holes.length);
+        if (!holeIndices.includes(idx)) holeIndices.push(idx);
+      }
+      holeIndices.forEach(idx => {
+        const hole = holes[idx];
+        const sym = hole.querySelector('.symbol');
+        sym.textContent = randomSymbol();
+        sym.style.display = 'block';
+      });
+    }
+
+    function startGame() {
+      score = 0;
+      timeLeft = 30;
+      scoreEl.textContent = score;
+      timerEl.textContent = timeLeft;
+      setTarget();
+      spawnTimer = setInterval(spawn, 1000);
+      gameTimer = setInterval(() => {
+        timeLeft--;
+        timerEl.textContent = timeLeft;
+        if (timeLeft <= 0) endGame();
+      }, 1000);
+    }
+
+    function endGame() {
+      clearInterval(spawnTimer);
+      clearInterval(gameTimer);
+      clearHoles();
+      setTimeout(() => {
+        if (confirm(`時間到！你得到 ${score} 分，再玩一次？`)) {
+          startGame();
+        }
+      }, 100);
+    }
+
+    holes.forEach(hole => {
+      hole.addEventListener('click', () => {
+        const sym = hole.querySelector('.symbol');
+        if (sym.textContent === target) {
+          score++;
+          scoreEl.textContent = score;
+          if ('audio' in window) {
+            const audio = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=');
+            audio.play();
+          }
+          setTarget();
+          clearHoles();
+        }
+      });
+    });
+
+    startGame();
+  </script>
+</body>
+</html>
