@@ -134,11 +134,12 @@
     .grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: clamp(5px, 1.8vw, 12px);
+      grid-template-rows: repeat(3, 1fr); /* rows share remaining height equally */
+      gap: 6px;
       width: 100%;
       max-width: 420px;
-      flex: 1;                   /* take remaining height */
-      align-content: center;
+      flex: 1;        /* fill leftover viewport height */
+      min-height: 0;  /* allow flex child to shrink */
     }
 
     /* ── Hole cell ───────────────────────────────────────── */
@@ -147,10 +148,15 @@
      *   .hole-cell  (relative, overflow:hidden → clips mole when below)
      *     .mole-graphic   (z:1, slides up/down)
      *     .hole-graphic   (z:2, always on top → covers lower mole body)
+     *
+     * Mole SVG layout (viewBox 0 0 100 150):
+     *   y=0–78  → head+face (52 %) — appears ABOVE hole rim
+     *   y=78–150 → fur cone (48 %) — hidden BEHIND hole graphic
+     * So face will always sit just above the hole regardless of cell height.
      */
     .hole-cell {
       position: relative;
-      height: clamp(120px, 31vw, 158px);
+      min-height: 0;   /* allow grid row to shrink */
       cursor: pointer;
       overflow: hidden;
     }
@@ -168,12 +174,16 @@
     /* ── Mole ────────────────────────────────────────────── */
     .mole-graphic {
       position: absolute;
-      /* bottom offset = roughly the hole graphic height so body hides behind it */
-      bottom: 20px;
+      /*
+       * bottom≈0 so the mole body (bottom 48% of SVG) sits inside the hole.
+       * The hole graphic is ~50% of cell width tall and covers this area.
+       * The face (top 52%) then peeks above the hole rim naturally.
+       */
+      bottom: 0;
       left: 50%;
-      width: clamp(72px, 19vw, 100px);
+      width: clamp(65px, 17vw, 88px);
       z-index: 1;
-      transform: translateX(-50%) translateY(calc(100% + 50px));
+      transform: translateX(-50%) translateY(calc(100% + 20px));
       transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
       cursor: pointer;
     }
