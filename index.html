@@ -181,7 +181,7 @@
        */
       bottom: 0;
       left: 50%;
-      width: clamp(65px, 17vw, 88px);
+      width: clamp(85px, 22vw, 115px);
       z-index: 1;
       transform: translateX(-50%) translateY(calc(100% + 20px));
       transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -377,17 +377,19 @@
     // The cone body at the bottom gets covered by the hole graphic (z-index:2).
     const MOLE_NORMAL_SVG = `
       <svg viewBox="0 0 100 150" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-        <image href="./img_02.jpeg" x="0" y="0" width="100" height="100" preserveAspectRatio="xMidYMid meet"/>
-        <rect x="27" y="42" width="46" height="30" rx="6" fill="white" opacity="0.75"/>
-        <text x="50" y="65" font-family="sans-serif" font-size="28" font-weight="bold"
+        <image href="./img_02.jpeg" x="0" y="-5" width="100" height="110" preserveAspectRatio="xMidYMid meet"/>
+        <!-- Zhuyin circle badge at bottom of face, above hole -->
+        <circle cx="50" cy="64" r="14" fill="white" opacity="0.9"/>
+        <text x="50" y="70" font-family="sans-serif" font-size="20" font-weight="bold"
               fill="#CC2200" text-anchor="middle">ㄅ</text>
       </svg>`;
 
     const MOLE_HAPPY_SVG = `
       <svg viewBox="0 0 100 150" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-        <image href="./img_01.jpeg" x="0" y="0" width="100" height="100" preserveAspectRatio="xMidYMid meet"/>
-        <rect x="27" y="42" width="46" height="30" rx="6" fill="white" opacity="0.75"/>
-        <text x="50" y="65" font-family="sans-serif" font-size="28" font-weight="bold"
+        <image href="./img_01.jpeg" x="0" y="-5" width="100" height="110" preserveAspectRatio="xMidYMid meet"/>
+        <!-- Zhuyin circle badge at bottom of face, above hole -->
+        <circle cx="50" cy="64" r="14" fill="white" opacity="0.9"/>
+        <text x="50" y="70" font-family="sans-serif" font-size="20" font-weight="bold"
               fill="#3A8A18" text-anchor="middle">ㄅ</text>
       </svg>`;
 
