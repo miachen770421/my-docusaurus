@@ -315,6 +315,27 @@
     .btn-back:hover  { transform: none; box-shadow: none; color: #777; }
     .btn-back:active { transform: none; box-shadow: none; }
 
+    /* ── Quit button ───────────────────────────────────── */
+    .btn-quit {
+      background: rgba(255,255,255,0.55);
+      border: none;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      font-size: 1rem;
+      color: #555;
+      cursor: pointer;
+      flex-shrink: 0;
+      align-self: center;
+      transition: background 0.15s;
+    }
+    .btn-quit:hover  { background: rgba(255,255,255,0.85); }
+    .btn-quit:active { background: rgba(255,255,255,1); }
+
+    /* ── Quit confirmation overlay ─────────────────────── */
+    .quit-modal-title { font-size: 1.4rem; font-weight: 900; color: #333; margin-bottom: 8px; }
+    .quit-modal-desc  { font-size: 0.92rem; color: #888; margin-bottom: 22px; }
+
     @media (min-width: 500px) { .grid { max-width: 460px; } }
   </style>
 </head>
@@ -351,10 +372,22 @@
     </div>
   </div>
 
+  <!-- ── Quit confirmation overlay ──────────────────────── -->
+  <div class="overlay hidden" id="quitOverlay">
+    <div class="modal">
+      <div class="modal-icon">🚪</div>
+      <div class="quit-modal-title">要離開遊戲嗎？</div>
+      <div class="quit-modal-desc">目前進度將不會儲存</div>
+      <button class="btn" id="resumeBtn">繼續遊戲</button>
+      <button class="btn btn-back" id="quitConfirmBtn">離開，回選單</button>
+    </div>
+  </div>
+
   <!-- ── Game UI ──────────────────────────────────────────── -->
   <h1 class="game-title">ㄅㄆㄇ 打地鼠</h1>
 
   <div class="hud">
+    <button class="btn-quit" id="quitBtn" title="離開遊戲">✕</button>
     <div class="hud-box hidden" id="timerBox">⏱ 時間<span class="val" id="timerDisplay">60</span></div>
     <div class="hud-box hidden" id="livesBox">生命<span class="val" id="livesDisplay">❤️❤️❤️</span></div>
     <div class="hud-box">得分<span class="val" id="scoreDisplay">0</span></div>
@@ -407,6 +440,20 @@
       ['ㄧ','ㄨ','ㄩ','ㄚ','ㄛ','ㄜ','ㄝ'],                // +7 = 28
       ['ㄞ','ㄟ','ㄠ','ㄡ','ㄢ','ㄣ','ㄤ','ㄥ','ㄦ'],       // +9 = 37
     ];
+
+    // TTS pronunciation map: zhuyin → representative Chinese char with same sound
+    const ZHUYIN_SPEAK = {
+      'ㄅ':'玻','ㄆ':'坡','ㄇ':'摸','ㄈ':'佛',
+      'ㄉ':'得','ㄊ':'特','ㄋ':'呢','ㄌ':'勒',
+      'ㄍ':'哥','ㄎ':'科','ㄏ':'喝',
+      'ㄐ':'基','ㄑ':'期','ㄒ':'希',
+      'ㄓ':'知','ㄔ':'吃','ㄕ':'詩','ㄖ':'日',
+      'ㄗ':'資','ㄘ':'次','ㄙ':'思',
+      'ㄧ':'衣','ㄨ':'屋','ㄩ':'魚',
+      'ㄚ':'啊','ㄛ':'哦','ㄜ':'鵝','ㄝ':'耶',
+      'ㄞ':'哀','ㄟ':'欸','ㄠ':'熬','ㄡ':'歐',
+      'ㄢ':'安','ㄣ':'恩','ㄤ':'昂','ㄥ':'鞥','ㄦ':'而',
+    };
 
     // Mode 1: unlock by correct count
     const SURVIVAL_POOL_UNLOCKS = [0, 5, 10, 15, 20];
@@ -462,6 +509,7 @@
     const endStars        = document.getElementById('endStars');
     const endCorrectRow   = document.getElementById('endCorrectRow');
     const difficultyBadge = document.getElementById('difficultyBadge');
+    const quitOverlay     = document.getElementById('quitOverlay');
 
     // ── Build 9 holes ──────────────────────────────────────────────────────────
     for (let i = 0; i < 9; i++) {
@@ -530,9 +578,11 @@
 
     function speak(text) {
       if (!window.speechSynthesis) return;
-      const utter = new SpeechSynthesisUtterance(text);
+      // Use representative Chinese character for cleaner zhuyin pronunciation
+      const mapped = ZHUYIN_SPEAK[text] ?? text;
+      const utter = new SpeechSynthesisUtterance(mapped);
       utter.lang = 'zh-TW';
-      utter.rate = 0.80;
+      utter.rate = 0.75;
       utter.pitch = 1.35;
       speechSynthesis.cancel();
       speechSynthesis.speak(utter);
@@ -595,13 +645,32 @@
     }
 
     // ── Mole management ────────────────────────────────────────────────────────
-    function hideMole(idx) {
+    function loseLife(cellEl) {
+      lives--;
+      livesDisplay.textContent = livesEmoji(lives);
+      if (cellEl) {
+        const r = cellEl.getBoundingClientRect();
+        showFloating(r.left + r.width / 2 - 22, r.top + r.height / 3, '-❤️', '#E53935');
+      }
+      playErrorSound();
+      if (lives <= 0) {
+        gameRunning = false; // block new rounds immediately
+        setTimeout(() => endGame(), 350);
+      }
+    }
+
+    // silent=true skips the life-loss penalty (used when resetting/ending)
+    function hideMole(idx, silent = false) {
       const h = holes[idx];
       if (!h.up) return;
       clearTimeout(moleTimers[idx]);
+      const wasTarget = h.isTarget;
       h.cell.classList.remove('up');
       h.up = false; h.char = ''; h.isTarget = false;
       setTimeout(() => setMoleSvg(h, MOLE_NORMAL_SVG, ''), 280);
+      if (!silent && wasTarget && gameMode === 'survival' && gameRunning) {
+        loseLife(h.cell);
+      }
     }
 
     function hideAllMoles() {
@@ -626,7 +695,7 @@
 
     function spawnMoles() {
       const visibleMs   = gameMode === 'survival' ? getMoleMs(speedLevel) : 2000;
-      const count       = Math.floor(Math.random() * 3) + 1;
+      const count       = Math.floor(Math.random() * 3) + 2; // 2–4, always ≥1 distractor
       const indices     = shuffled([0,1,2,3,4,5,6,7,8]).slice(0, count);
       const targetIndex = randItem(indices);
       const distractors = activePool.filter(z => z !== targetChar);
@@ -703,16 +772,10 @@
         clearTimeout(moleTimers[idx]);
         h.up = false; h.isTarget = false;
         h.cell.classList.add('wrong');
-        playErrorSound();
 
         if (gameMode === 'survival') {
-          lives--;
-          livesDisplay.textContent = livesEmoji(lives);
-          showFloating(cx - 22, cy, '-❤️', '#E53935');
-          if (lives <= 0) {
-            setTimeout(() => endGame(), 350);
-            return;
-          }
+          loseLife(h.cell);
+          if (lives <= 0) return; // endGame already scheduled
         }
 
         setTimeout(() => {
@@ -820,6 +883,47 @@
       setTimeout(() => playTone(659, 0.14), 170);
       setTimeout(() => playTone(784, 0.28), 340);
     }
+
+    // ── Pause / quit ───────────────────────────────────────────────────────────
+    function pauseGame() {
+      if (!gameRunning) return;
+      gameRunning = false;
+      roundActive = false;
+      clearInterval(countdownTimer);
+      moleTimers.forEach(clearTimeout);
+      hideAllMoles();
+      quitOverlay.classList.remove('hidden');
+    }
+
+    function resumeGame() {
+      quitOverlay.classList.add('hidden');
+      gameRunning = true;
+      if (gameMode === 'timed') {
+        countdownTimer = setInterval(() => {
+          timeLeft--;
+          elapsedTime++;
+          timerDisplay.textContent = timeLeft;
+          timerBar.style.width = `${(timeLeft / GAME_DURATION) * 100}%`;
+          updatePool();
+          if (timeLeft <= 0) endGame();
+        }, 1000);
+      }
+      setTimeout(startRound, 300);
+    }
+
+    function quitToMenu() {
+      gameRunning = false;
+      clearInterval(countdownTimer);
+      moleTimers.forEach(clearTimeout);
+      hideAllMoles();
+      quitOverlay.classList.add('hidden');
+      endOverlay.classList.add('hidden');
+      startOverlay.classList.remove('hidden');
+    }
+
+    document.getElementById('quitBtn').addEventListener('click', pauseGame);
+    document.getElementById('resumeBtn').addEventListener('click', resumeGame);
+    document.getElementById('quitConfirmBtn').addEventListener('click', quitToMenu);
 
     // ── Buttons ────────────────────────────────────────────────────────────────
     document.getElementById('mode1Btn').addEventListener('click', () => {
